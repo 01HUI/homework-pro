@@ -1,0 +1,92 @@
+/* styles.css */
+
+/* 页面顶部工具栏样式 */
+.top-bar {
+  padding: 10px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #ccc;
+}
+
+/* 复选框样式 */
+input[type="checkbox"] {
+  margin-right: 5px;
+}
+
+/* 照片卡片样式 */
+.card {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease-in-out; /* 卡片动效：鼠标悬停时 */
+  max-width: 1000px; /* 设置卡片的宽度 */
+}
+
+.card:hover {
+  transform: scale(1.03); /* 放大卡片 */
+}
+
+/* 图片样式 */
+.card-img-top {
+  display: block;
+  margin: 0 auto; /* 图片水平居中 */
+  width: 100%;
+  max-height: 500px; /* 设置图片的最大高度 */
+  object-fit: contain; /* 保持图片比例且适应容器 */
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+/* 卡片主体样式 */
+.card-body {
+  padding: 20px;
+}
+
+/* 标题文字样式 */
+.card-title {
+  font-size: 16px;
+  color: #888;
+  padding: 0 16px;
+}
+
+/* 照片评论样式 */
+.card-text {
+  margin-bottom: 10px;
+}
+
+/* 评论用户链接样式 */
+.comment-user {
+  font-weight: bold;
+}
+
+/* 评论文字样式 */
+.comment-text {
+  color: #333;
+}
+
+/* 评论上传时间样式 */
+.comment-upload-time {
+  color: #888;
+}
+
+/* 禁用状态按钮样式 */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 底部按钮样式 */
+button {
+  padding: 8px 16px;
+  margin-right: 10px;
+  border: none;
+  border-radius: 4px;
+  background-color: #007bff;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.3s; /* 按钮动效：鼠标悬停时 */
+}
+
+button:hover {
+  background-color: #0056b3; /* 按钮颜色变化 */
+}
