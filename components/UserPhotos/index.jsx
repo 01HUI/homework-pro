@@ -44,6 +44,7 @@ class UserPhotos extends React.Component {
       .then((response) => {
         const photos = response.data; // 获取返回的照片数据
         this.setState({ photos }); // 更新组件状态中的照片数据
+        // this.props.userChange(photos[0].owner); // 更新顶层组件状态中的用户数据
       })
       .catch((e) => {
         console.log(e); // 如果出现错误，打印错误信息

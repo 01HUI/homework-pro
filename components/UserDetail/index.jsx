@@ -1,7 +1,7 @@
 import React from "react";
 // import { Typography } from "@mui/material";
 import { HashRouter as Router, Link } from "react-router-dom";
-import axios from 'axios';
+import axios from "axios";
 import "./styles.css";
 
 /**
@@ -14,16 +14,26 @@ class UserDetail extends React.Component {
   }
 
   componentDidMount() {
-    this.componentDidUpdate();
+    // Async call to server
+    const new_user_id = this.props.match.params.userId;
+    this.handleUserChange(new_user_id);
   }
 
   componentDidUpdate() {
-    let userId = this.props.match.params.userId;
-    // Async call to server
-    axios.get(`/user/${userId}`)
+    const new_user_id = this.props.match.params.userId;
+    const current_user_id = this.state.user?._id;
+    if (current_user_id !== new_user_id) {
+      this.handleUserChange(new_user_id);
+    }
+  }
+
+  handleUserChange(user_id) {
+    axios
+      .get(`/user/${user_id}`)
       .then((response) => {
         let user = response.data;
         this.setState({ user: user });
+        this.props.userChange(response.data);
       })
       .catch((e) => {
         console.log(e);
@@ -66,14 +76,6 @@ class UserDetail extends React.Component {
           </div>
         </div>
       </Router>
-
-      // <Typography variant="body1">
-      //   This should be the UserDetail view of the PhotoShare app. Since it is
-      //   invoked from React Router the params from the route will be in property
-      //   match. So this should show details of user:
-      //   {this.props.match.params.userId}. You can fetch the model for the user
-      //   from window.cs142models.userModel(userId).
-      // </Typography>
     );
   }
 }

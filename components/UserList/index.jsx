@@ -1,15 +1,7 @@
 import React from "react";
-import {
-  // Divider,
-  List,
-  ListItem,
-  ListItemText,
-  // Typography,
-} from "@mui/material";
+import { List, ListItem, ListItemText } from "@mui/material";
 import { HashRouter as Router, Link } from "react-router-dom";
-import axios from 'axios';
-// import fetchModel from "../../lib/fetchModelData.js";
-
+import axios from "axios";
 import "./styles.css";
 
 /**
@@ -19,17 +11,19 @@ class UserList extends React.Component {
   constructor(props) {
     super(props);
     // 初始化组件状态
-    this.state = { users: [] };
+    this.state = { users: [], user_id: "" };
     // 绑定this
-    this.userFullName = this.userFullName.bind(this);
+    // this.userFullName = this.userFullName.bind(this);
   }
 
   componentDidMount() {
     // Async call to server
     // 组件挂载后执行的生命周期方法
-    // 异步从服务器获取用户列表数据
-    axios.get("/user/list")
+    // 服务器获取用户列表数据
+    axios
+      .get("/user/list")
       .then((response) => {
+        console.log("User list response:", response.data);
         // 获取服务器返回的用户数据
         let users = response.data;
         // 更新组件状态中的用户列表数据
@@ -41,21 +35,34 @@ class UserList extends React.Component {
       });
   }
 
-  userFullName(user) {
-    // 返回用户的全名
-    // 如果用户不存在，返回空字符串
-    if (!user) return "";
-    return (
-      this.props.someProperty || "" + user.first_name + " " + user.last_name
-    );
+  // 在组件更新后调用的生命周期方法
+  componentDidUpdate() {
+    // 获取新的用户 ID
+    const new_user_id = this.props.match?.params.userId;
+
+    // 获取当前组件状态中保存的用户 ID
+    const current_user_id = this.state.user_id;
+
+    // 检查用户 ID 是否发生变化
+    if (current_user_id !== new_user_id) {
+      // 如果发生变化，调用处理用户变化的方法
+      this.handleUserChange(new_user_id);
+    }
   }
+
+  handleUserChange(user_id) {
+    console.log("handleUserChange called with user_id:", user_id);
+    this.setState({
+      user_id: user_id,
+    });
+  }
+
   userListItems() {
-    //for (let user of users) console.log(this.userFullName(user));
     // 根据用户列表数据生成用户列表项
     return this.state.users.map((user) => (
       <ListItem divider={true} key={user._id}>
         <Link to={"/users/" + user._id} className="user-list-item">
-          <ListItemText primary={this.userFullName(user)} />
+          <ListItemText primary={user.first_name + " " + user.last_name} />
         </Link>
       </ListItem>
     ));
@@ -68,31 +75,6 @@ class UserList extends React.Component {
         <h1>UserList</h1>
         <List component="nav">{this.userListItems()}</List>
       </Router>
-      // <div>
-      //   <Typography variant="body1">
-      //     This is the user list, which takes up 3/12 of the window. You might
-      //     choose to use <a href="https://mui.com/components/lists/">Lists</a>{" "}
-      //     and <a href="https://mui.com/components/dividers/">Dividers</a> to
-      //     display your users like so:
-      //   </Typography>
-      //   <List component="nav">
-      //     <ListItem>
-      //       <ListItemText primary="Item #1" />
-      //     </ListItem>
-      //     <Divider />
-      //     <ListItem>
-      //       <ListItemText primary="Item #2" />
-      //     </ListItem>
-      //     <Divider />
-      //     <ListItem>
-      //       <ListItemText primary="Item #3" />
-      //     </ListItem>
-      //     <Divider />
-      //   </List>
-      //   <Typography variant="body1">
-      //     The model comes in from window.cs142models.userListModel()
-      //   </Typography>
-      // </div>
     );
   }
 }
