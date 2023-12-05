@@ -3,7 +3,7 @@
 export const fieldConfigs = [
   {
     key: "login_name",
-    label: "用户名",
+    label: "登录名",
     autoFocus: true,
     required: true,
   },
@@ -12,21 +12,23 @@ export const fieldConfigs = [
     label: "密码",
     required: true,
     autoComplete: "new-password",
+    type: "password",
   },
   {
     key: "confirmPassword",
     label: "确认密码",
     required: true,
     autoComplete: "new-password",
-  },
-  {
-    key: "first_name",
-    label: "名",
-    required: true,
+    type: "password",
   },
   {
     key: "last_name",
     label: "姓",
+    required: true,
+  },
+  {
+    key: "first_name",
+    label: "名",
     required: true,
   },
   {
@@ -42,5 +44,3 @@ export const fieldConfigs = [
     label: "描述",
   },
 ];
-
-

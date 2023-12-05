@@ -33,7 +33,6 @@ class UserDetail extends React.Component {
       .then((response) => {
         let user = response.data;
         this.setState({ user: user });
-        this.props.userChange(response.data);
       })
       .catch((e) => {
         console.log(e);
@@ -46,7 +45,7 @@ class UserDetail extends React.Component {
         <div className="user-detail">
           <div className="user-header">
             <h1>
-              {this.state.user.first_name + " " + this.state.user.last_name}
+              {this.state.user.last_name + " " + this.state.user.first_name}
             </h1>
           </div>
 

@@ -1,0 +1,16 @@
+.selected-user,
+.normal-user {
+  cursor: pointer;
+  width: 100%;
+}
+
+.selected-user {
+  color: black;
+  background-color: #e9e7e7;
+  text-decoration: none !important;
+}
+
+.normal-user {
+  color: #9b9696;
+  text-decoration: none !important;
+}

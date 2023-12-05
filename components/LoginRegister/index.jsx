@@ -42,14 +42,20 @@ class LoginRegister extends Component {
     };
     this.handleChange = this.handleChange.bind(this);
   }
-
+  componentDidMount() {
+    localStorage.setItem(
+      "userData",
+      JSON.stringify({
+        loginUser: {
+          id: "",
+          first_name: "",
+        },
+        loggedIn: false,
+      })
+    );
+  }
   // 用户登录
   handleLogin = async () => {
-    console.log(
-      "login_name===>",
-      this.state.user.login_name,
-      this.state.password
-    );
     const { login_name, password } = this.state.user;
 
     // 字段校验
@@ -65,17 +71,25 @@ class LoginRegister extends Component {
         login_name,
         password,
       });
-      console.log("response.data._id===>", response.data._id);
 
       if (response && response.data) {
-        this.setState({
-          // 更新用户id
-          user: { id: response.data._id },
+        // 登录成功-用户信息
+        const userData = {
+          loginUser: {
+            id: response.data._id,
+            first_name: response.data.first_name,
+          },
           loggedIn: true,
-        });
+        };
+
+        // 保存用户信息到 localStorage
+        localStorage.setItem("userData", JSON.stringify(userData));
+
+        // 更新用户状态
+        this.setState(userData);
 
         // 更新用户状态到外部组件，切换toolbar视图
-        this.props.userChange(response.data);
+        this.props.userChange(userData);
       }
 
       // 错误处理
@@ -145,19 +159,17 @@ class LoginRegister extends Component {
       if (response && response.data) {
         this.setState({
           id: response.data._id,
-          loggedIn: true,
           needRegister: false,
-          message: "注册成功",
+          flag: false,
+          snackbarOpen: true,
+          message: "注册成功,快去登录吧~",
         });
-
-        this.props.userChange(response.data);
       }
     } catch (error) {
       console.error("注册过程中发生错误:", error);
 
       if (error.response && error.response.status === 400) {
         const errorData = error.response.data;
-        console.log("errorData===>", errorData.error);
         this.setState({
           message: errorData.error,
           snackbarOpen: true,
@@ -195,7 +207,7 @@ class LoginRegister extends Component {
         fullWidth
         name={config.key}
         label={config.label}
-        type={config.key}
+        type={config.type || "text"}
         id={config.key}
         autoFocus={config.autoFocus}
         autoComplete={config.autoComplete || config.key}
@@ -208,8 +220,6 @@ class LoginRegister extends Component {
   render() {
     const { loggedIn, message, snackbarOpen, id, needRegister, flag } =
       this.state;
-
-    console.log("message===>", loggedIn, id);
 
     // 登录成功跳转用户详情页;
     if (loggedIn) {
@@ -275,7 +285,9 @@ class LoginRegister extends Component {
               <Button
                 variant="text"
                 fullWidth
-                onClick={() => this.setState({ needRegister: false, flag: false })}
+                onClick={() =>
+                  this.setState({ needRegister: false, flag: false })
+                }
                 style={{ marginTop: "20px" }}
               >
                 已有账号？去登录

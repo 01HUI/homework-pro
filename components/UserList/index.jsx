@@ -12,8 +12,6 @@ class UserList extends React.Component {
     super(props);
     // 初始化组件状态
     this.state = { users: [], user_id: "" };
-    // 绑定this
-    // this.userFullName = this.userFullName.bind(this);
   }
 
   componentDidMount() {
@@ -33,6 +31,15 @@ class UserList extends React.Component {
         // 如果发生错误，打印错误信息到控制台
         console.log(e);
       });
+
+    // 首次进入页面,获取当前登录的用户 ID
+    const {
+      loginUser: { id: currentUserId },
+    } = this.props;
+
+    this.setState({
+      user_id: currentUserId,
+    });
   }
 
   // 在组件更新后调用的生命周期方法
@@ -42,33 +49,48 @@ class UserList extends React.Component {
 
     // 获取当前组件状态中保存的用户 ID
     const current_user_id = this.state.user_id;
-
     // 检查用户 ID 是否发生变化
-    if (current_user_id !== new_user_id) {
+    if (new_user_id && current_user_id && current_user_id !== new_user_id) {
       // 如果发生变化，调用处理用户变化的方法
       this.handleUserChange(new_user_id);
     }
   }
 
   handleUserChange(user_id) {
-    console.log("handleUserChange called with user_id:", user_id);
+    console.log("handleUserChange called with user_id===>", user_id);
     this.setState({
       user_id: user_id,
     });
   }
 
   userListItems() {
+
     // 根据用户列表数据生成用户列表项
     return this.state.users.map((user) => (
-      <ListItem divider={true} key={user._id}>
-        <Link to={"/users/" + user._id} className="user-list-item">
-          <ListItemText primary={user.first_name + " " + user.last_name} />
+      <ListItem
+        divider={true}
+        key={user._id}
+        className={
+          this.state.user_id === user._id ? "selected-user" : "normal-user"
+        }
+        onClick={() => {
+          this.handleUserChange(user._id);
+        }}
+      >
+        <Link
+          to={"/users/" + user._id}
+          className={
+            this.state.user_id === user._id ? "selected-user" : "normal-user"
+          }
+        >
+          <ListItemText primary={user.last_name + " " + user.first_name} />
         </Link>
       </ListItem>
     ));
   }
 
   render() {
+
     return (
       <Router>
         {/* 渲染用户列表:左侧banner */}

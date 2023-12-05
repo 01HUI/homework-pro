@@ -31,50 +31,80 @@
  *                      (JSON format).
  */
 
+// 导入所需的模块和依赖项
 const mongoose = require("mongoose");
 mongoose.Promise = require("bluebird");
 
 const async = require("async");
 const bcrypt = require("bcrypt");
-
 const express = require("express");
 const app = express();
 
-const fs = require("fs");
-// 导入所需的模块和依赖项
-const session = require("express-session"); // 用于管理会话的Express会话中间件
-const bodyParser = require("body-parser"); // 用于处理HTTP POST请求体的Body解析中间件
-const multer = require("multer"); // 用于处理multipart/form-data的Multer中间件，用于文件上传
+// 用于管理会话的Express会话中间件
+const session = require("express-session");
+// 用于处理HTTP POST请求体的Body解析中间件
+const bodyParser = require("body-parser");
+// 用于处理multipart/form-data的Multer中间件，用于文件上传
+const multer = require("multer");
+// 用于处理文件路径的Node.js模块
+const path = require("path");
+//用于将 Express 会话数据存储在 MongoDB 中的 connect-mongodb-session 模块
+const MongoDBStore = require("connect-mongodb-session")(session);
+
+// 配置 Multer 中间件，确保生成唯一的文件名
+const storage = multer.diskStorage({
+  destination: "./images",
+  filename: (req, file, cb) => {
+    // 生成唯一的文件名，确保文件名具有足够的随机性
+    const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueName + path.extname(file.originalname));
+  },
+});
+// 使用 Multer 中间件创建一个 Multer 实例
+const upload = multer({ storage });
 
 // Load the Mongoose schema for User, Photo, and SchemaInfo
-const User = require("./schema/user.js"); // 从指定文件导入User模式
-const Photo = require("./schema/photo.js"); // 从指定文件导入Photo模式
-const SchemaInfo = require("./schema/schemaInfo.js"); // 从指定文件导入SchemaInfo模式
+const User = require("./schema/user.js");
+const Photo = require("./schema/photo.js");
+const SchemaInfo = require("./schema/schemaInfo.js");
 
-// const { appendFileSync } = require("fs");
+// 会话配置
+// 创建一个 MongoDBStore 实例，用于将会话数据存储在 MongoDB 中
+const store = new MongoDBStore({
+  uri: "mongodb://127.0.0.1/cs142project6",
+  // 在数据库中存储会话数据的集合名称
+  collection: "sessions",
+  // 设置会话的过期时间为一天
+  expires: 1000 * 60 * 60 * 24,
+});
 
-// 配置Multer以处理文件上传并将它们存储在内存中
-const processFormBody = multer({ storage: multer.memoryStorage() }).single(
-  "uploadedphoto"
-);
-
-// 配置Express应用程序以使用必要的中间件
-
-// 使用选项配置会话中间件
 app.use(
   session({
-    secret: "secretKey", // 用于签署会话ID cookie的密钥
-    resave: false, // 如果会话数据未修改，则不保存会话数据
-    saveUninitialized: false, // 在存储之前不要创建会话
+    secret: "your-secret-key",
+    resave: false,
+    saveUninitialized: true,
+    store: store,
   })
 );
 
+// 该方式-会话配置时间较短
+// app.use(
+//   session({
+//     // 用于签署会话ID cookie的密钥
+//     secret: "your-secret-key",
+//     // 如果会话数据未修改，则不保存会话数据
+//     resave: false,
+//     // 在存储之前不要创建会话
+//     saveUninitialized: true,
+//     // 将会话设置为1小时后过期:自动过期
+//     cookie: { maxAge: 3600000 },
+//   })
+// );
+
 // 使用bodyParser中间件解析JSON请求
 app.use(bodyParser.json());
-// XXX - Your submission should work without this line. Comment out or delete
-// this line for tests and before submission!
-// const cs142models = require("./modelData/photoApp.js").cs142models;
 
+// 连接到MongoDB
 mongoose.set("strictQuery", false);
 mongoose.connect("mongodb://127.0.0.1/cs142project6", {
   useNewUrlParser: true,
@@ -84,25 +114,6 @@ mongoose.connect("mongodb://127.0.0.1/cs142project6", {
 // We have the express static module
 // (http://expressjs.com/en/starter/static-files.html) do all the work for us.
 app.use(express.static(__dirname));
-
-function getSessionUserID(request) {
-  console.log("6569f6f175ebed489de3b273===>", request.session.user_id);
-  return request.session.user_id;
-  //return session.user._id;
-}
-
-function hasNoUserSession(request, response) {
-  //return false;
-  if (!getSessionUserID(request)) {
-    response.status(401).send();
-    return true;
-  }
-  if (session.user === undefined) {
-    response.status(401).send();
-    return true;
-  }
-  return false;
-}
 
 app.get("/", function (request, response) {
   response.send("Simple web server of files from " + __dirname);
@@ -186,86 +197,21 @@ app.get("/test/:p1", function (request, response) {
   }
 });
 
-app.post("/photos/new", function (request, response) {
-  if (hasNoUserSession(request, response)) return;
-  const user_id = getSessionUserID(request) || "";
-  if (user_id === "") {
-    console.error("Error in /photos/new", user_id);
-    response.status(400).send("user_id required");
-    return;
-  }
-  processFormBody(request, response, function (error) {
-    if (error || !request.file) {
-      console.error("Error in /photos/new", error);
-      response.status(400).send("photo required");
+// 中间件，确保除了登录、注册、注销以外的所有请求都需要用户身份验证
+app.use((req, res, next) => {
+  console.log("req.path===>", req.path);
+  console.log("req.session.user===>", req.session.user);
+  if (
+    req.path !== "/admin/login" &&
+    req.path !== "/admin/logout" &&
+    req.path !== "/user"
+  ) {
+    if (!req.session.user) {
+      res.status(401).send("Unauthorized: User not logged in");
       return;
     }
-    const timestamp = new Date().valueOf();
-    const filename = "U" + String(timestamp) + request.file.originalname;
-    fs.writeFile("./images/" + filename, request.file.buffer, function (e) {
-      if (e) {
-        console.error("Error in /photos/new");
-        response.status(400).send("error writing photo");
-        return;
-      }
-      Photo.create({
-        _id: new mongoose.Types.ObjectId(),
-        file_name: filename,
-        date_time: new Date(),
-        user_id: new mongoose.Types.ObjectId(user_id),
-        comment: [],
-      })
-        .then(() => {
-          response.end();
-        })
-        .catch((err) => {
-          console.error("Error in /photos/new", err);
-          response.status(500).send(JSON.stringify(err));
-        });
-    });
-  });
-});
-
-app.post("/commentsOfPhoto/:photo_id", function (request, response) {
-  if (hasNoUserSession(request, response)) return;
-  const id = request.params.photo_id || "";
-  const user_id = getSessionUserID(request) || "";
-  const comment = request.body.comment || "";
-  if (id === "") {
-    response.status(400).send("id required");
-    return;
   }
-  if (user_id === "") {
-    response.status(400).send("user_id required");
-    return;
-  }
-  if (comment === "") {
-    response.status(400).send("comment required");
-    return;
-  }
-  Photo.updateOne(
-    { _id: new mongoose.Types.ObjectId(id) },
-    {
-      $push: {
-        comments: {
-          comment: comment,
-          date_time: new Date(),
-          user_id: new mongoose.Types.ObjectId(user_id),
-          _id: new mongoose.Types.ObjectId(),
-        },
-      },
-    },
-    function (err) {
-      if (err) {
-        // Query returned an error. We pass it back to the browser with an
-        // Internal Service Error (500) error code.
-        console.error("Error in /commentsOfPhoto/:photo_id", err);
-        response.status(500).send(JSON.stringify(err));
-        return;
-      }
-      response.end();
-    }
-  );
+  next();
 });
 
 // 登录接口
@@ -275,7 +221,7 @@ app.post("/admin/login", async (request, response) => {
 
     // 查找用户
     const user = await User.findOne({ login_name });
-    console.log("user", user);
+    console.log("login user message===>", user);
 
     if (!user) {
       // 用户不存在
@@ -307,6 +253,7 @@ app.post("/admin/login", async (request, response) => {
   }
 });
 
+// 注册接口
 app.post("/user", async (req, res) => {
   try {
     const {
@@ -367,7 +314,27 @@ app.post("/user", async (req, res) => {
   }
 });
 
-// 获取用户列表
+// 退出登录接口
+app.post("/admin/logout", (req, res) => {
+  // 检查用户是否已登录
+  if (!req.session.user) {
+    res.status(400).send("Bad Request: User not logged in");
+    return;
+  }
+
+  // 销毁 session 中的用户信息
+  req.session.destroy((err) => {
+    if (err) {
+      console.error("Error logging out:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    } else {
+      // 退出成功，返回空响应
+      res.status(200).end();
+    }
+  });
+});
+
+// 获取用户列表接口
 app.get("/user/list", async (request, response) => {
   try {
     // 查询数据库，获取所有用户
@@ -377,47 +344,15 @@ app.get("/user/list", async (request, response) => {
     );
 
     // 返回用户列表
-    response.json(userList);
+    return response.json(userList);
   } catch (error) {
     console.error("Error in /user/list", error);
-    response.status(500).json({ error: "Internal Server Error" });
+    return response.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-// 注销
-app.post("/admin/logout", (req, res) => {
-  // 销毁 session 中的用户信息
-  req.session.destroy((err) => {
-    if (err) {
-      console.error("Error logging out:", err);
-      res.status(500).json({ error: "Internal Server Error" });
-    } else {
-      // 注销成功，返回空响应
-      res.status(200).end();
-    }
-  });
-});
-
-// // /user/login-status 路由处理获取当前登录用户信息请求
-// app.get("/user/login-status", (req, res) => {
-//   // 检查 session 中是否有保存的用户信息
-//   const user = req.session.user;
-//   console.log("user===>", req.session);
-
-//   if (user) {
-//     res.json(user);
-//   } else {
-//     res.status(401).json({ error: "Unauthorized" });
-//   }
-// });
-
-// ----------------------------------------------
-
-/**
- * URL /user/:id - Returns the information for User (id).
- */
-// 处理获取特定用户信息的HTTP GET请求
-app.get("/user/:id", async function (request, response) {
+// 用户详情接口
+app.get("/user/:id", async (request, response) => {
   try {
     // 检查用户会话是否有效，如果无效则立即返回
     // if (hasNoUserSession(request, response)) return;
@@ -455,29 +390,39 @@ app.get("/user/:id", async function (request, response) {
   }
 });
 
-app.get("/photosOfUser/:id", async function (request, response) {
+// 获取用户照片列表接口
+app.get("/photosOfUser/:id", async (request, response) => {
+  // 从请求参数中获取用户的 ID
   const id = request.params.id;
+
+  // 查找用户信息，仅返回指定字段
   User.findOne(
     { _id: id },
     "_id first_name last_name location description occupation"
   )
     .then(function (user) {
+      // 如果找不到用户，抛出错误
       if (!user) {
         throw new Error("User not found");
       }
+
+      // 查找用户的照片信息，仅返回指定字段
       return Photo.find(
         { user_id: id },
         "_id user_id comments file_name date_time"
       );
     })
     .then(function (photos) {
+      // 遍历照片信息，处理每张照片的评论信息
       const promises = photos.map(function (photo) {
+        // 处理每条评论信息
         const commentsPromises = photo.comments.map(function (comment) {
           return User.findOne(
             { _id: comment.user_id },
             "_id first_name last_name"
           )
             .then(function (user) {
+              // 返回格式化后的评论数据，包含评论用户信息
               return {
                 _id: comment.id,
                 comment: comment.comment,
@@ -486,10 +431,13 @@ app.get("/photosOfUser/:id", async function (request, response) {
               };
             })
             .catch(function (err) {
+              // 处理查询评论用户时的错误
               console.error("Error retrieving comment user:", err);
               throw err;
             });
         });
+
+        // 等待所有评论处理完成后，返回格式化后的照片信息
         return Promise.all(commentsPromises).then(function (commentsData) {
           return {
             _id: photo._id,
@@ -500,12 +448,16 @@ app.get("/photosOfUser/:id", async function (request, response) {
           };
         });
       });
+
+      // 等待所有照片信息处理完成后，返回格式化后的所有照片数据
       return Promise.all(promises);
     })
     .then(function (photosData) {
+      // 成功时，返回状态码 200 和格式化后的照片数据
       response.status(200).send(photosData);
     })
     .catch(function (error) {
+      // 处理任何错误，并返回状态码 400 和错误消息
       console.error("An error occurred while retrieving user photos:", error);
       response
         .status(400)
@@ -513,6 +465,76 @@ app.get("/photosOfUser/:id", async function (request, response) {
     });
 });
 
+// 添加评论接口
+app.post("/commentsOfPhoto/:photo_id", async (req, res) => {
+  const { photo_id } = req.params;
+  const { comment } = req.body;
+  console.log("request.session.user_id===>", req.session.user._id);
+  const user_id = req.session.user._id;
+
+  try {
+    // 检查评论是否为空
+    if (!comment || comment.trim() === "") {
+      return res.status(400).json({ error: "评论不能为空" });
+    }
+
+    // 查找相应的照片
+    const photo = await Photo.findById(photo_id);
+
+    if (!photo) {
+      return res.status(404).json({ error: "找不到相应的照片" });
+    }
+
+    // 创建评论
+    const newComment = {
+      comment,
+      user_id,
+      date_time: Date.now(),
+    };
+
+    // 将评论添加到照片的comments数组中
+    photo.comments.push(newComment);
+
+    // 保存更新后的照片
+    await photo.save();
+
+    // 返回成功响应
+    return res.status(200).json({ success: true, message: "评论添加成功" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "服务器错误" });
+  }
+});
+
+// 上传照片接口
+app.post("/photos/new", upload.single("photo"), async (req, res) => {
+  try {
+    // 检查请求中是否包含文件
+    if (!req.file) {
+      // 如果没有文件，返回 400 错误和错误消息
+      return res.status(400).json({ error: "错误请求：POST 请求中没有文件" });
+    }
+
+    // 获取当前已登录用户的用户 ID
+    const user_id = req.session.user._id;
+
+    // 创建新的 Photo 文档，包括文件名、用户 ID 和初始的评论数组
+    const photo = await Photo.create({
+      file_name: req.file.filename,
+      user_id: user_id,
+      comments: [],
+    });
+
+    // 返回成功的响应，包含成功消息和上传的照片信息
+    return res.status(200).json({ message: "照片上传成功", photo: photo });
+  } catch (error) {
+    // 捕获可能的错误，返回 500 错误和错误消息
+    console.error("上传照片时出错：", error);
+    return res.status(500).json({ error: "内部服务器错误" });
+  }
+});
+
+// 启动服务器
 const server = app.listen(3001, function () {
   const port = server.address().port;
   console.log(
